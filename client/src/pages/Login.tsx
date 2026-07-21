@@ -60,18 +60,8 @@ export const Login: React.FC = () => {
     }
   };
 
-  const handleAppleLogin = async () => {
-    setSubmitting(true);
-    setApiError(null);
-    try {
-      await loginWithApple();
-      navigate('/');
-    } catch (err: any) {
-      console.error(err);
-      setApiError(err.response?.data?.message || err.message || 'Apple sign-in failed');
-    } finally {
-      setSubmitting(false);
-    }
+  const handleAppleLogin = () => {
+    setApiError('Sign in with Apple is currently in sandbox mode (requires an Apple Developer Program membership). Please use Google Account or Email instead!');
   };
 
   return (
