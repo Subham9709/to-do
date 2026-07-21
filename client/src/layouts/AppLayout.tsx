@@ -208,36 +208,6 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
           </div>
 
           <div className="flex items-center gap-4">
-            {/* Notification Bell */}
-            <div className="relative">
-              <button 
-                onClick={() => setShowNotifications(!showNotifications)}
-                className="p-2.5 rounded-xl bg-secondary/50 hover:bg-secondary border border-border/50 text-foreground transition-all duration-200"
-              >
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full"></span>
-              </button>
-
-              {showNotifications && (
-                <div className="absolute right-0 mt-3 w-80 glass border border-border rounded-2xl p-4 shadow-2xl z-50 animate-in fade-in slide-in-from-top-2 duration-200">
-                  <div className="flex justify-between items-center border-b border-border pb-2 mb-2">
-                    <span className="font-semibold text-sm">Notifications</span>
-                    <button onClick={() => setShowNotifications(false)} className="text-xs text-primary hover:underline">Mark all read</button>
-                  </div>
-                  <div className="space-y-3 max-h-60 overflow-y-auto text-xs py-1">
-                    <div className="p-2 rounded-xl bg-secondary/30 border border-border/40">
-                      <p className="font-medium text-foreground">Welcome to TaskSync!</p>
-                      <p className="text-muted-foreground mt-0.5">Explore the dashboard, kanban board, and calendar views.</p>
-                    </div>
-                    <div className="p-2 rounded-xl bg-secondary/30 border border-border/40">
-                      <p className="font-medium text-foreground">Deadline Reminder</p>
-                      <p className="text-muted-foreground mt-0.5">You have high priority tasks due today. Check them out.</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-            
             {/* Profile Avatar Quick-link */}
             <div 
               onClick={() => navigate('/settings')}
