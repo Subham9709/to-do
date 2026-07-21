@@ -122,3 +122,23 @@
 .animate-pulse-slow {
   animation: pulse-slow 8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
+
+/* PWA Safe Area bottom padding for mobile devices with home bars (e.g. iPhone X+) */
+.safe-bottom {
+  padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* Eliminate tap delay, disable highlight color, and improve mobile scroll physics */
+@media (max-width: 767px) {
+  html, body {
+    touch-action: pan-x pan-y;
+    -webkit-tap-highlight-color: transparent;
+    overflow-x: hidden;
+  }
+  
+  /* Disable text selection inside interactive controls like buttons and nav items to emulate a native app shell */
+  button, a, nav, .safe-bottom {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+}

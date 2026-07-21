@@ -226,8 +226,31 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         </header>
 
         {/* Dynamic Page Container */}
-        <div className="flex-1 p-6 md:p-10 relative overflow-y-auto">
+        <div className="flex-1 p-6 md:p-10 pb-24 md:pb-10 relative overflow-y-auto">
           {children}
+        </div>
+
+        {/* Mobile Bottom Navigation Bar */}
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-background/80 backdrop-blur-lg border-t border-border/60 flex justify-around items-center py-2 px-2 shadow-2xl safe-bottom">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const active = isActive(item.path);
+            return (
+              <Link
+                key={item.name}
+                to={item.path}
+                className={`
+                  flex flex-col items-center gap-1 py-1 rounded-2xl transition-all duration-300 flex-1
+                  ${active ? 'text-primary' : 'text-muted-foreground'}
+                `}
+              >
+                <div className={`p-1 rounded-xl transition-all duration-200 ${active ? 'bg-primary/10 scale-110' : 'hover:bg-secondary/40'}`}>
+                  <Icon className="w-5.5 h-5.5" />
+                </div>
+                <span className="text-[10px] font-bold tracking-tight">{item.name.split(' ')[0]}</span>
+              </Link>
+            );
+          })}
         </div>
       </main>
     </div>
