@@ -205,7 +205,7 @@ export const googleLogin = async (req: AuthRequest, res: Response) => {
     }
 
     const email = decoded.email;
-    const name = decoded.name || email.split('@')[0];
+    const name = req.body.name || decoded.name || email.split('@')[0];
     const avatar = decoded.picture || '';
 
     // Find if user already exists

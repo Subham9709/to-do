@@ -1,6 +1,13 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import API from '../services/api';
-import { signInWithPopup, OAuthProvider } from 'firebase/auth';
+import { 
+  signInWithPopup, 
+  OAuthProvider,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  updateProfile as firebaseUpdateProfile,
+  sendPasswordResetEmail
+} from 'firebase/auth';
 import { auth, googleProvider } from '../config/firebase';
 
 export interface UserSettings {
@@ -25,6 +32,7 @@ interface AuthContextType {
   register: (name: string, email: string, password: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   loginWithApple: () => Promise<void>;
+  forgotPassword: (email: string) => Promise<void>;
   logout: () => void;
   updateProfile: (data: Partial<User> & { password?: string }) => Promise<void>;
   deleteAccount: () => Promise<void>;
@@ -65,7 +73,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     setLoading(true);
     try {
-      const res = await API.post('/auth/login', { email, password });
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      const idToken = await result.user.getIdToken();
+      const res = await API.post('/auth/google', { idToken });
       const { token: userToken, ...userData } = res.data;
       
       setToken(userToken);
@@ -80,7 +90,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (name: string, email: string, password: string) => {
     setLoading(true);
     try {
-      const res = await API.post('/auth/register', { name, email, password });
+      const result = await createUserWithEmailAndPassword(auth, email, password);
+      await firebaseUpdateProfile(result.user, { displayName: name });
+      const idToken = await result.user.getIdToken(true);
+      const res = await API.post('/auth/google', { idToken, name });
       const { token: userToken, ...userData } = res.data;
 
       setToken(userToken);
@@ -90,6 +103,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setLoading(false);
     }
+  };
+
+  const forgotPassword = async (email: string) => {
+    await sendPasswordResetEmail(auth, email);
   };
 
   const loginWithGoogle = async () => {
@@ -172,6 +189,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         register,
         loginWithGoogle,
         loginWithApple,
+        forgotPassword,
         logout,
         updateProfile,
         deleteAccount,

@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '../context/AuthContext';
-import { motion } from 'framer-motion';
-import { CheckSquare, Mail, Lock, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { CheckSquare, Mail, Lock, AlertCircle, Eye, EyeOff, RefreshCw, X } from 'lucide-react';
 
 const loginSchema = z.object({
   email: z.string().min(1, 'Email is required').email('Invalid email address'),
@@ -15,12 +15,24 @@ const loginSchema = z.object({
 type LoginSchema = z.infer<typeof loginSchema>;
 
 export const Login: React.FC = () => {
-  const { login, loginWithGoogle, loginWithApple } = useAuth();
+  const { login, loginWithGoogle, loginWithApple, forgotPassword } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Captcha State
+  const [captchaCode, setCaptchaCode] = useState('');
+  const [captchaInput, setCaptchaInput] = useState('');
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Reset Password Modal State
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetSent, setResetSent] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
+  const [resetSubmitting, setResetSubmitting] = useState(false);
 
   const sessionExpired = searchParams.get('expired') === 'true';
 
@@ -32,7 +44,67 @@ export const Login: React.FC = () => {
     resolver: zodResolver(loginSchema),
   });
 
+  // Captcha Generator & Drawer
+  const generateCaptcha = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 5; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setCaptchaCode(code);
+    setCaptchaInput('');
+    setTimeout(() => drawCaptcha(code), 50);
+  };
+
+  const drawCaptcha = (code: string) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#111827';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.strokeStyle = '#374151';
+    ctx.lineWidth = 1.5;
+    for (let i = 0; i < 6; i++) {
+      ctx.beginPath();
+      ctx.moveTo(Math.random() * canvas.width, Math.random() * canvas.height);
+      ctx.lineTo(Math.random() * canvas.width, Math.random() * canvas.height);
+      ctx.stroke();
+    }
+
+    ctx.textBaseline = 'middle';
+    ctx.font = 'bold 22px "Plus Jakarta Sans", sans-serif';
+    const space = canvas.width / (code.length + 1);
+
+    for (let i = 0; i < code.length; i++) {
+      const char = code[i];
+      ctx.fillStyle = `hsl(${Math.random() * 360}, 80%, 70%)`;
+      
+      ctx.save();
+      const x = space * (i + 1) + (Math.random() * 4 - 2);
+      const y = canvas.height / 2 + (Math.random() * 6 - 3);
+      ctx.translate(x, y);
+      const angle = (Math.random() * 30 - 15) * Math.PI / 180;
+      ctx.rotate(angle);
+      ctx.fillText(char, -8, 0);
+      ctx.restore();
+    }
+  };
+
+  useEffect(() => {
+    generateCaptcha();
+  }, []);
+
   const onSubmit = async (data: LoginSchema) => {
+    if (captchaInput.trim().toUpperCase() !== captchaCode) {
+      setApiError('Incorrect Captcha code. Please try again.');
+      generateCaptcha();
+      return;
+    }
+
     setSubmitting(true);
     setApiError(null);
     try {
@@ -40,9 +112,29 @@ export const Login: React.FC = () => {
       navigate('/');
     } catch (err: any) {
       console.error(err);
-      setApiError(err.response?.data?.message || 'Invalid credentials. Please try again.');
+      setApiError(err.message || 'Invalid credentials. Please try again.');
+      generateCaptcha();
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetEmail.trim()) {
+      setResetError('Email address is required.');
+      return;
+    }
+    setResetSubmitting(true);
+    setResetError(null);
+    try {
+      await forgotPassword(resetEmail.trim());
+      setResetSent(true);
+    } catch (err: any) {
+      console.error(err);
+      setResetError(err.message || 'Failed to send password reset email. Make sure the email is registered.');
+    } finally {
+      setResetSubmitting(false);
     }
   };
 
@@ -134,6 +226,18 @@ export const Login: React.FC = () => {
             <div className="space-y-2">
               <div className="flex justify-between items-center px-1">
                 <label className="text-sm font-semibold text-foreground/80">Password</label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setResetEmail('');
+                    setResetSent(false);
+                    setResetError(null);
+                    setShowResetModal(true);
+                  }}
+                  className="text-xs font-bold text-primary hover:underline"
+                >
+                  Forgot Password?
+                </button>
               </div>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
@@ -161,6 +265,36 @@ export const Login: React.FC = () => {
                   <span>{errors.password.message}</span>
                 </p>
               )}
+            </div>
+
+            {/* Captcha Field */}
+            <div className="space-y-2 border-t border-border/40 pt-4 mt-4">
+              <label className="text-sm font-semibold text-foreground/80 px-1">Security Verification</label>
+              <div className="flex items-center gap-3 bg-secondary/20 border border-border/60 rounded-2xl p-3">
+                <canvas
+                  ref={canvasRef}
+                  width="130"
+                  height="46"
+                  className="rounded-xl border border-border bg-slate-950 pointer-events-none select-none"
+                  title="Captcha Image"
+                />
+                <button
+                  type="button"
+                  onClick={generateCaptcha}
+                  className="p-2.5 rounded-xl hover:bg-secondary/60 text-muted-foreground hover:text-foreground transition-colors"
+                  title="Refresh Captcha"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                </button>
+                <input
+                  type="text"
+                  placeholder="Enter code"
+                  required
+                  value={captchaInput}
+                  onChange={(e) => setCaptchaInput(e.target.value)}
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-secondary/30 border border-border text-sm font-bold uppercase tracking-wider text-center focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                />
+              </div>
             </div>
 
             {/* Submit Button */}
@@ -244,6 +378,90 @@ export const Login: React.FC = () => {
           </p>
         </div>
       </motion.div>
+
+      {/* Forgot Password Modal Overlay */}
+      <AnimatePresence>
+        {showResetModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-md bg-background rounded-3xl border border-border p-6 shadow-2xl space-y-4 relative"
+            >
+              {/* Header */}
+              <div className="flex justify-between items-center border-b border-border/60 pb-3">
+                <h3 className="text-lg font-bold text-foreground">Reset Password</h3>
+                <button
+                  onClick={() => setShowResetModal(false)}
+                  className="p-1.5 hover:bg-secondary rounded-xl text-muted-foreground transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Reset Form */}
+              {resetSent ? (
+                <div className="text-center py-4 space-y-3">
+                  <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 rounded-full w-12 h-12 flex items-center justify-center mx-auto">
+                    <CheckSquare className="w-6 h-6" />
+                  </div>
+                  <h4 className="font-bold text-base text-foreground">Check Your Email</h4>
+                  <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+                    A password reset link has been sent to **{resetEmail}**. Please check your inbox and spam folder to finish resetting your password.
+                  </p>
+                  <button
+                    onClick={() => setShowResetModal(false)}
+                    className="px-6 py-2.5 bg-primary text-primary-foreground font-bold rounded-xl text-xs shadow-lg hover:shadow-primary/20 transition-all w-full mt-2"
+                  >
+                    Back to Login
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleForgotPasswordSubmit} className="space-y-4">
+                  <p className="text-xs text-muted-foreground">
+                    Enter your registered email address below, and we will request a secure password reset link from Firebase.
+                  </p>
+
+                  {resetError && (
+                    <div className="p-3 bg-destructive/10 border border-destructive/20 text-destructive rounded-xl flex items-start gap-2.5 text-xs">
+                      <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                      <span>{resetError}</span>
+                    </div>
+                  )}
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-foreground/80 px-1">Email Address</label>
+                    <div className="relative">
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-muted-foreground" />
+                      <input
+                        type="email"
+                        required
+                        placeholder="name@example.com"
+                        value={resetEmail}
+                        onChange={(e) => setResetEmail(e.target.value)}
+                        className="w-full pl-11 pr-4 py-3 rounded-xl bg-secondary/30 border border-border text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={resetSubmitting}
+                    className="w-full py-3 bg-primary text-primary-foreground font-bold rounded-xl text-xs shadow-lg hover:shadow-primary/25 transition-all flex justify-center items-center gap-2"
+                  >
+                    {resetSubmitting ? (
+                      <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin"></div>
+                    ) : (
+                      'Send Reset Link'
+                    )}
+                  </button>
+                </form>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
