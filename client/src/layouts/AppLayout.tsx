@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -31,6 +31,19 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission().then((permission) => {
+        if (permission === 'granted') {
+          new Notification("TaskSync Notifications Enabled", {
+            body: "You will now receive desktop alerts for task deadlines and reminders!",
+            icon: "/favicon.svg"
+          });
+        }
+      });
+    }
+  }, []);
 
   const navItems = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },

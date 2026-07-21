@@ -28,7 +28,9 @@ import {
   Sparkles,
   FileText,
   Bookmark,
-  Loader2
+  Loader2,
+  Clock,
+  Bell
 } from 'lucide-react';
 
 interface ChecklistItem {
@@ -70,6 +72,169 @@ interface Todo {
   createdAt: string;
   updatedAt: string;
 }
+
+interface VisualClockPickerProps {
+  value: string; // "HH:mm" format (24h)
+  onChange: (newValue: string) => void;
+  onClose: () => void;
+}
+
+const VisualClockPicker: React.FC<VisualClockPickerProps> = ({ value, onChange, onClose }) => {
+  const [view, setView] = useState<'hours' | 'minutes'>('hours');
+  
+  // Parse hour and minute
+  const [h24, mStr] = value.split(':');
+  const initialHour24 = parseInt(h24) || 12;
+  const initialMinute = parseInt(mStr) || 0;
+  
+  const initialAMPM = initialHour24 >= 12 ? 'PM' : 'AM';
+  const initialHour12 = initialHour24 % 12 === 0 ? 12 : initialHour24 % 12;
+
+  const [hour12, setHour12] = useState(initialHour12);
+  const [minute, setMinute] = useState(initialMinute);
+  const [ampm, setAmpm] = useState<'AM' | 'PM'>(initialAMPM);
+
+  // Sync to parent when changes occur
+  const updateParent = (h: number, m: number, ap: 'AM' | 'PM') => {
+    let finalHour = h;
+    if (ap === 'PM' && h !== 12) finalHour += 12;
+    if (ap === 'AM' && h === 12) finalHour = 0;
+    
+    const hStr = finalHour.toString().padStart(2, '0');
+    const mStr = m.toString().padStart(2, '0');
+    onChange(`${hStr}:${mStr}`);
+  };
+
+  const handleHourSelect = (h: number) => {
+    setHour12(h);
+    updateParent(h, minute, ampm);
+    setView('minutes'); // Switch to minutes select after picking hour
+  };
+
+  const handleMinuteSelect = (m: number) => {
+    setMinute(m);
+    updateParent(hour12, m, ampm);
+  };
+
+  const handleAMPMSelect = (ap: 'AM' | 'PM') => {
+    setAmpm(ap);
+    updateParent(hour12, minute, ap);
+  };
+
+  return (
+    <div className="p-4 bg-background border border-border shadow-2xl rounded-3xl w-72 flex flex-col items-center gap-4 relative animate-in zoom-in-95 duration-200">
+      {/* Header Display */}
+      <div className="flex items-center gap-2 justify-center w-full">
+        <button
+          type="button"
+          onClick={() => setView('hours')}
+          className={`text-2xl font-bold p-1.5 rounded-lg ${view === 'hours' ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:bg-secondary'}`}
+        >
+          {hour12.toString().padStart(2, '0')}
+        </button>
+        <span className="text-2xl font-bold text-muted-foreground">:</span>
+        <button
+          type="button"
+          onClick={() => setView('minutes')}
+          className={`text-2xl font-bold p-1.5 rounded-lg ${view === 'minutes' ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:bg-secondary'}`}
+        >
+          {minute.toString().padStart(2, '0')}
+        </button>
+
+        {/* AM/PM toggle */}
+        <div className="flex gap-1 ml-4 border border-border/60 rounded-xl p-0.5 bg-secondary/30">
+          {(['AM', 'PM'] as const).map((ap) => (
+            <button
+              key={ap}
+              type="button"
+              onClick={() => handleAMPMSelect(ap)}
+              className={`px-2.5 py-1 rounded-lg text-xs font-extrabold ${ampm === ap ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-secondary/60'}`}
+            >
+              {ap}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Clock Face Dial */}
+      <div className="relative w-48 h-48 rounded-full bg-secondary/30 border border-border/80 flex items-center justify-center select-none">
+        {/* Center dot */}
+        <div className="w-2.5 h-2.5 rounded-full bg-primary z-20"></div>
+
+        {/* Hand */}
+        <div 
+          className="absolute bottom-1/2 left-1/2 w-0.5 bg-primary origin-bottom z-10 transition-transform duration-300"
+          style={{
+            height: '70px',
+            transform: `translateX(-50%) rotate(${view === 'hours' ? hour12 * 30 : minute * 6}deg)`
+          }}
+        >
+          {/* Hand tip */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-primary flex items-center justify-center shadow-md">
+            <div className="w-1.5 h-1.5 rounded-full bg-background"></div>
+          </div>
+        </div>
+
+        {/* Dial numbers */}
+        {view === 'hours' ? (
+          [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((h) => {
+            const isSelected = hour12 === h;
+            const angle = (h === 12 ? 0 : h) * 30;
+            return (
+              <button
+                key={h}
+                type="button"
+                onClick={() => handleHourSelect(h)}
+                className={`absolute w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all hover:bg-primary/20 ${isSelected ? 'text-primary-foreground bg-primary' : 'text-foreground'}`}
+                style={{
+                  transform: `rotate(${angle}deg) translate(0, -70px) rotate(-${angle}deg)`
+                }}
+              >
+                {h}
+              </button>
+            );
+          })
+        ) : (
+          [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map((m) => {
+            const isSelected = Math.floor(minute / 5) * 5 === m;
+            const angle = m * 6;
+            return (
+              <button
+                key={m}
+                type="button"
+                onClick={() => handleMinuteSelect(m)}
+                className={`absolute w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold transition-all hover:bg-primary/20 ${isSelected ? 'text-primary-foreground bg-primary' : 'text-foreground'}`}
+                style={{
+                  transform: `rotate(${angle}deg) translate(0, -70px) rotate(-${angle}deg)`
+                }}
+              >
+                {m.toString().padStart(2, '0')}
+              </button>
+            );
+          })
+        )}
+      </div>
+
+      {/* Action Footer */}
+      <div className="flex justify-between w-full mt-2 border-t border-border/40 pt-3">
+        <button
+          type="button"
+          onClick={() => setView(view === 'hours' ? 'minutes' : 'hours')}
+          className="text-xs font-extrabold text-primary hover:underline"
+        >
+          Select {view === 'hours' ? 'Minutes' : 'Hours'}
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          className="px-3 py-1 bg-primary text-primary-foreground text-xs font-bold rounded-xl shadow"
+        >
+          Done
+        </button>
+      </div>
+    </div>
+  );
+};
 
 export const Tasks: React.FC = () => {
   const { user } = useAuth();
@@ -118,6 +283,7 @@ export const Tasks: React.FC = () => {
   // Recurrence
   const [recurringType, setRecurringType] = useState<Todo['recurring']['type']>('none');
   const [recurringInterval, setRecurringInterval] = useState(1);
+  const [activeTimePicker, setActiveTimePicker] = useState<'deadline' | 'reminder' | null>(null);
 
   // Undo Delete Tracker
   const [lastDeletedTodo, setLastDeletedTodo] = useState<Todo | null>(null);
@@ -157,6 +323,55 @@ export const Tasks: React.FC = () => {
     fetchData();
   }, [search, selectedPriority, selectedCategory, selectedStatus, selectedDeadline, selectedSort]);
 
+  const notifiedRef = useRef<Record<string, boolean>>({});
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = new Date();
+      todos.forEach((todo) => {
+        if (todo.status === 'completed' || todo.status === 'archived') return;
+
+        // 1. Check Deadline
+        if (todo.deadline) {
+          const deadlineTime = new Date(todo.deadline);
+          const timeDiff = deadlineTime.getTime() - now.getTime();
+          if (timeDiff > 0 && timeDiff <= 15 * 60 * 1000) {
+            const key = `${todo._id}-deadline`;
+            if (!notifiedRef.current[key]) {
+              notifiedRef.current[key] = true;
+              if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification(`Task Deadline Approaching!`, {
+                  body: `"${todo.title}" is due in ${Math.round(timeDiff / (60 * 1000))} minutes!`,
+                  icon: '/favicon.svg'
+                });
+              }
+            }
+          }
+        }
+
+        // 2. Check Reminder
+        if (todo.reminder) {
+          const reminderTime = new Date(todo.reminder);
+          const timeDiff = reminderTime.getTime() - now.getTime();
+          if (timeDiff <= 0 && timeDiff >= -5 * 60 * 1000) {
+            const key = `${todo._id}-reminder`;
+            if (!notifiedRef.current[key]) {
+              notifiedRef.current[key] = true;
+              if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification(`Task Reminder!`, {
+                  body: `"${todo.title}": It is time to work on this task!`,
+                  icon: '/favicon.svg'
+                });
+              }
+            }
+          }
+        }
+      });
+    }, 15000); // Check every 15 seconds
+
+    return () => clearInterval(interval);
+  }, [todos]);
+
   // Keyboard Shortcuts Handler
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -181,8 +396,75 @@ export const Tasks: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // Datetime Parsing, Custom Clock & Quick Preset Helpers
+  const getParts = (dtString: string) => {
+    if (!dtString) return { date: '', time: '12:00' };
+    const parts = dtString.split('T');
+    return {
+      date: parts[0] || '',
+      time: parts[1] ? parts[1].substring(0, 5) : '12:00',
+    };
+  };
+
+  const formatTimeTo12h = (time24: string) => {
+    if (!time24) return '12:00 AM';
+    const [h, m] = time24.split(':');
+    const hour = parseInt(h) || 0;
+    const minute = parseInt(m) || 0;
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+    return `${hour12}:${minute.toString().padStart(2, '0')} ${ampm}`;
+  };
+
+  const handleDateChange = (field: 'deadline' | 'reminder', newDate: string) => {
+    const isDeadline = field === 'deadline';
+    const current = isDeadline ? deadline : reminder;
+    const { time } = getParts(current);
+    
+    if (!newDate) {
+      if (isDeadline) setDeadline('');
+      else setReminder('');
+    } else {
+      if (isDeadline) setDeadline(`${newDate}T${time}`);
+      else setReminder(`${newDate}T${time}`);
+    }
+  };
+
+  const handleTimeChange = (field: 'deadline' | 'reminder', newTime: string) => {
+    const isDeadline = field === 'deadline';
+    const current = isDeadline ? deadline : reminder;
+    const { date } = getParts(current);
+    const targetDate = date || new Date().toISOString().substring(0, 10);
+    
+    if (isDeadline) setDeadline(`${targetDate}T${newTime}`);
+    else setReminder(`${targetDate}T${newTime}`);
+  };
+
+  const handleDatePreset = (field: 'deadline' | 'reminder', preset: string) => {
+    const now = new Date();
+    let target = new Date();
+    
+    if (preset === 'Today') {
+      // keep today
+    } else if (preset === 'Tomorrow') {
+      target.setDate(now.getDate() + 1);
+    } else if (preset === 'Next Week') {
+      target.setDate(now.getDate() + 7);
+    }
+    
+    const dateStr = target.toISOString().substring(0, 10);
+    const { time } = getParts(field === 'deadline' ? deadline : reminder);
+    
+    if (field === 'deadline') {
+      setDeadline(`${dateStr}T${time}`);
+    } else {
+      setReminder(`${dateStr}T${time}`);
+    }
+  };
+
   // Modal Openers
   const openCreateModal = () => {
+    setActiveTimePicker(null);
     setEditingTodo(null);
     setTitle('');
     setDescription('');
@@ -199,6 +481,7 @@ export const Tasks: React.FC = () => {
   };
 
   const openEditModal = (todo: Todo) => {
+    setActiveTimePicker(null);
     setEditingTodo(todo);
     setTitle(todo.title);
     setDescription(todo.description || '');
@@ -755,9 +1038,16 @@ export const Tasks: React.FC = () => {
             <motion.div
               layoutId={todo._id}
               key={todo._id}
+              whileHover={{ y: -4, scale: 1.01 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
               className={`
                 glass rounded-3xl p-6 border relative transition-all duration-300 flex flex-col justify-between group h-full
+                hover:shadow-[0_20px_50px_rgba(0,0,0,0.15)] hover:border-primary/30
                 ${todo.pinned ? 'border-primary/40 bg-primary/[0.02]' : 'border-border/80'}
+                ${todo.priority === 'urgent' ? 'hover:shadow-red-500/[0.04] hover:border-red-500/25' : ''}
+                ${todo.priority === 'high' ? 'hover:shadow-amber-500/[0.04] hover:border-amber-500/25' : ''}
+                ${todo.priority === 'medium' ? 'hover:shadow-emerald-500/[0.04] hover:border-emerald-500/25' : ''}
+                ${todo.priority === 'low' ? 'hover:shadow-blue-500/[0.04] hover:border-blue-500/25' : ''}
               `}
             >
               {/* Top Row Indicators */}
@@ -1020,25 +1310,137 @@ export const Tasks: React.FC = () => {
                 </div>
 
                 {/* Deadlines & Reminders */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-semibold text-foreground/80">Deadline</label>
-                    <input
-                      type="datetime-local"
-                      value={deadline}
-                      onChange={(e) => setDeadline(e.target.value)}
-                      className="w-full p-3.5 rounded-2xl bg-secondary/30 border border-border text-xs focus:outline-none"
-                    />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative">
+                  {/* Deadline Section */}
+                  <div className="space-y-2 relative">
+                    <label className="text-sm font-semibold text-foreground/80 flex items-center gap-1.5">
+                      <Calendar className="w-4 h-4 text-primary" />
+                      <span>Deadline Date</span>
+                    </label>
+                    <div className="space-y-2">
+                      <input
+                        type="date"
+                        value={getParts(deadline).date}
+                        onChange={(e) => handleDateChange('deadline', e.target.value)}
+                        className="w-full p-3 rounded-xl bg-secondary/30 border border-border focus:outline-none text-xs font-semibold"
+                      />
+                      
+                      {/* Date Quick Presets */}
+                      <div className="flex gap-1.5 flex-wrap">
+                        {['Today', 'Tomorrow', 'Next Week'].map((preset) => (
+                          <button
+                            key={preset}
+                            type="button"
+                            onClick={() => handleDatePreset('deadline', preset)}
+                            className="px-2.5 py-1 rounded-full bg-secondary/60 hover:bg-primary/10 hover:text-primary border border-border/40 text-[10px] font-extrabold transition-all"
+                          >
+                            {preset}
+                          </button>
+                        ))}
+                        {deadline && (
+                          <button
+                            type="button"
+                            onClick={() => setDeadline('')}
+                            className="px-2.5 py-1 rounded-full bg-destructive/10 text-destructive border border-destructive/20 text-[10px] font-extrabold transition-all"
+                          >
+                            Clear
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Time display and Clock Trigger */}
+                      {deadline && (
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={() => setActiveTimePicker(activeTimePicker === 'deadline' ? null : 'deadline')}
+                            className="w-full p-2.5 rounded-xl bg-primary/5 border border-primary/20 hover:bg-primary/10 text-primary flex items-center justify-between text-xs font-bold transition-all"
+                          >
+                            <span className="flex items-center gap-1.5">
+                              <Clock className="w-3.5 h-3.5" />
+                              <span>Time: {formatTimeTo12h(getParts(deadline).time)}</span>
+                            </span>
+                            <span className="text-[10px] underline">Open Clock</span>
+                          </button>
+                          
+                          {activeTimePicker === 'deadline' && (
+                            <div className="absolute left-0 mt-2 z-50">
+                              <VisualClockPicker
+                                value={getParts(deadline).time}
+                                onChange={(val) => handleTimeChange('deadline', val)}
+                                onClose={() => setActiveTimePicker(null)}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-semibold text-foreground/80">Remind Me</label>
-                    <input
-                      type="datetime-local"
-                      value={reminder}
-                      onChange={(e) => setReminder(e.target.value)}
-                      className="w-full p-3.5 rounded-2xl bg-secondary/30 border border-border text-xs focus:outline-none"
-                    />
+                  {/* Reminder Section */}
+                  <div className="space-y-2 relative">
+                    <label className="text-sm font-semibold text-foreground/80 flex items-center gap-1.5">
+                      <Bell className="w-4 h-4 text-purple-500" />
+                      <span>Remind Me Date</span>
+                    </label>
+                    <div className="space-y-2">
+                      <input
+                        type="date"
+                        value={getParts(reminder).date}
+                        onChange={(e) => handleDateChange('reminder', e.target.value)}
+                        className="w-full p-3 rounded-xl bg-secondary/30 border border-border focus:outline-none text-xs font-semibold"
+                      />
+                      
+                      {/* Date Quick Presets */}
+                      <div className="flex gap-1.5 flex-wrap">
+                        {['Today', 'Tomorrow', 'Next Week'].map((preset) => (
+                          <button
+                            key={preset}
+                            type="button"
+                            onClick={() => handleDatePreset('reminder', preset)}
+                            className="px-2.5 py-1 rounded-full bg-secondary/60 hover:bg-primary/10 hover:text-primary border border-border/40 text-[10px] font-extrabold transition-all"
+                          >
+                            {preset}
+                          </button>
+                        ))}
+                        {reminder && (
+                          <button
+                            type="button"
+                            onClick={() => setReminder('')}
+                            className="px-2.5 py-1 rounded-full bg-destructive/10 text-destructive border border-destructive/20 text-[10px] font-extrabold transition-all"
+                          >
+                            Clear
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Time display and Clock Trigger */}
+                      {reminder && (
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={() => setActiveTimePicker(activeTimePicker === 'reminder' ? null : 'reminder')}
+                            className="w-full p-2.5 rounded-xl bg-purple-500/5 border border-purple-500/20 hover:bg-purple-500/10 text-purple-500 flex items-center justify-between text-xs font-bold transition-all"
+                          >
+                            <span className="flex items-center gap-1.5">
+                              <Clock className="w-3.5 h-3.5" />
+                              <span>Time: {formatTimeTo12h(getParts(reminder).time)}</span>
+                            </span>
+                            <span className="text-[10px] underline">Open Clock</span>
+                          </button>
+                          
+                          {activeTimePicker === 'reminder' && (
+                            <div className="absolute left-0 mt-2 z-50">
+                              <VisualClockPicker
+                                value={getParts(reminder).time}
+                                onChange={(val) => handleTimeChange('reminder', val)}
+                                onClose={() => setActiveTimePicker(null)}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
