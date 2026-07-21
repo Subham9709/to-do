@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import API from '../services/api';
-import { signInWithPopup } from 'firebase/auth';
+import { signInWithPopup, OAuthProvider } from 'firebase/auth';
 import { auth, googleProvider } from '../config/firebase';
 
 export interface UserSettings {
@@ -24,6 +24,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
+  loginWithApple: () => Promise<void>;
   logout: () => void;
   updateProfile: (data: Partial<User> & { password?: string }) => Promise<void>;
   deleteAccount: () => Promise<void>;
@@ -108,6 +109,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const loginWithApple = async () => {
+    setLoading(true);
+    try {
+      const provider = new OAuthProvider('apple.com');
+      const result = await signInWithPopup(auth, provider);
+      const idToken = await result.user.getIdToken();
+      const res = await API.post('/auth/google', { idToken });
+      const { token: userToken, ...userData } = res.data;
+
+      setToken(userToken);
+      setUser(userData);
+      localStorage.setItem('todo-token', userToken);
+      localStorage.setItem('todo-user', JSON.stringify(userData));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const logout = () => {
     setToken(null);
     setUser(null);
@@ -152,6 +171,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login,
         register,
         loginWithGoogle,
+        loginWithApple,
         logout,
         updateProfile,
         deleteAccount,
