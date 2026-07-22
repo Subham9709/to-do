@@ -11,7 +11,6 @@ import {
   AlertTriangle,
   Sparkles,
   Zap,
-  TrendingUp,
   Loader2,
   Search,
   ArrowUpRight
@@ -105,17 +104,17 @@ export const Dashboard: React.FC = () => {
   const toggleTodoStatus = async (todo: Todo) => {
     const newStatus = todo.status === 'completed' ? 'pending' : 'completed';
     try {
-      // Optimistic Update
+      // Optimistic UI updates
       setTodos(prev => prev.map(t => t._id === todo._id ? { ...t, status: newStatus } : t));
       
       await API.put(`/todos/${todo._id}`, { status: newStatus });
       
-      // Fetch fresh stats in background
+      // Update statistics in background
       const statsRes = await API.get('/todos/dashboard');
       setStats(statsRes.data);
     } catch (err) {
-      console.error('Failed to update todo status', err);
-      // Revert on error
+      console.error('Failed to toggle status', err);
+      // Revert on failure
       setTodos(prev => prev.map(t => t._id === todo._id ? { ...t, status: todo.status } : t));
     }
   };
@@ -144,7 +143,7 @@ export const Dashboard: React.FC = () => {
     );
   }
 
-  // Get 7 days of the current week (Sunday to Saturday)
+  // Calculate 7 days of the current week (Sunday to Saturday)
   const getWeekDays = () => {
     const current = new Date();
     const sunday = new Date(current.setDate(current.getDate() - current.getDay()));
@@ -180,9 +179,9 @@ export const Dashboard: React.FC = () => {
     const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
 
     const themeColors = [
-      { bg: 'bg-teal-600 text-white', progressBg: 'bg-white/20', progressFill: 'bg-white', arrowColor: 'text-teal-700 bg-white' },
-      { bg: 'bg-orange-500 text-white', progressBg: 'bg-white/20', progressFill: 'bg-white', arrowColor: 'text-orange-700 bg-white' },
-      { bg: 'bg-amber-500 text-white', progressBg: 'bg-white/20', progressFill: 'bg-white', arrowColor: 'text-amber-700 bg-white' },
+      { border: 'border-l-emerald-500 hover:border-emerald-500/30 hover:shadow-emerald-500/[0.04]', progressFill: 'bg-emerald-500', iconColor: 'text-emerald-500 bg-emerald-500/10' },
+      { border: 'border-l-purple-500 hover:border-purple-500/30 hover:shadow-purple-500/[0.04]', progressFill: 'bg-purple-500', iconColor: 'text-purple-500 bg-purple-500/10' },
+      { border: 'border-l-amber-500 hover:border-amber-500/30 hover:shadow-amber-500/[0.04]', progressFill: 'bg-amber-500', iconColor: 'text-amber-500 bg-amber-500/10' },
     ];
     const color = themeColors[index % themeColors.length];
 
@@ -229,7 +228,7 @@ export const Dashboard: React.FC = () => {
         <div className="flex gap-2">
           <button 
             onClick={() => navigate('/tasks')} 
-            className="p-2.5 rounded-full bg-secondary/50 hover:bg-secondary text-foreground transition-all"
+            className="p-2.5 rounded-full bg-secondary/50 hover:bg-secondary text-foreground transition-all border border-border/40"
             title="Search Tasks"
           >
             <Search className="w-5 h-5" />
@@ -239,7 +238,7 @@ export const Dashboard: React.FC = () => {
 
       {/* Streaks & Completion Widgets Bar */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-2 glass rounded-3xl p-6 flex flex-col md:flex-row justify-between items-center gap-6 border border-border/80 relative overflow-hidden">
+        <div className="md:col-span-2 glass rounded-[32px] p-6 flex flex-col md:flex-row justify-between items-center gap-6 border border-white/5 relative overflow-hidden shadow-xl shadow-primary/[0.02]">
           <div className="space-y-2 text-center md:text-left z-10">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-[10px] font-bold text-primary uppercase tracking-wider">
               <Sparkles className="w-3 h-3" />
@@ -273,9 +272,9 @@ export const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="glass rounded-3xl p-6 flex items-center justify-between border border-border/80 relative overflow-hidden">
+        <div className="glass rounded-[32px] p-6 flex items-center justify-between border border-white/5 relative overflow-hidden shadow-xl shadow-primary/[0.02]">
           <div className="space-y-3">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Daily Streak</h3>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Daily Streak</h3>
             <div className="flex gap-4">
               <div className="flex items-center gap-2">
                 <Flame className="w-6 h-6 text-orange-500 fill-orange-500/10 animate-bounce" />
@@ -302,8 +301,8 @@ export const Dashboard: React.FC = () => {
 
       {/* Horizontal Weekly Calendar */}
       <div className="space-y-3">
-        <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground px-1">Selected Week Day</h3>
-        <div className="grid grid-cols-7 gap-2 bg-secondary/20 border border-border/50 rounded-3xl p-2 md:p-3 relative overflow-hidden">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground px-1">Selected Week Day</h3>
+        <div className="grid grid-cols-7 gap-2 bg-slate-900/40 border border-white/5 rounded-3xl p-2 md:p-3 relative overflow-hidden">
           {weekDays.map((day) => {
             const isSelected = 
               day.getDate() === selectedDate.getDate() &&
@@ -324,7 +323,7 @@ export const Dashboard: React.FC = () => {
                 {isSelected && (
                   <motion.div
                     layoutId="activeDay"
-                    className="absolute inset-0 bg-orange-500 rounded-2xl shadow-lg shadow-orange-500/25 -z-10"
+                    className="absolute inset-0 bg-orange-500 rounded-2xl shadow-lg shadow-orange-500/20 -z-10"
                     transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                   />
                 )}
@@ -340,53 +339,54 @@ export const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Horizontal Project Goal Cards Carousel */}
+      {/* Horizontal Category featured cards */}
       <div className="space-y-3">
-        <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground px-1">Category Goals</h3>
+        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground px-1">Category Goals</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {categoryCards.length > 0 ? (
             categoryCards.map((card) => (
               <motion.div
                 key={card.name}
-                whileHover={{ y: -6 }}
-                className={`rounded-[32px] p-6 shadow-xl relative overflow-hidden flex flex-col justify-between min-h-[175px] ${card.color.bg}`}
+                whileHover={{ y: -5 }}
+                className={`rounded-[32px] p-6 shadow-xl relative overflow-hidden flex flex-col justify-between min-h-[175px] bg-slate-900/60 backdrop-blur-xl border border-white/5 border-l-4 ${card.color.border} transition-all duration-300`}
               >
                 <div>
-                  <span className="text-[10px] font-extrabold uppercase tracking-widest opacity-80">{card.name}</span>
-                  <h4 className="text-xl font-bold tracking-tight mt-1 leading-snug">{card.title}</h4>
+                  <div className="flex justify-between items-start">
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-muted-foreground">{card.name}</span>
+                    <div className={`p-2 rounded-xl text-xs font-bold ${card.color.iconColor}`}>{card.percentage}%</div>
+                  </div>
+                  <h4 className="text-base font-extrabold tracking-tight mt-3.5 leading-snug text-foreground">{card.title}</h4>
                 </div>
                 
-                <div className="mt-4 space-y-2">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="font-medium opacity-95">{card.completed}/{card.total} tasks done</span>
-                    <span className="font-bold">{card.percentage}%</span>
-                  </div>
-                  
+                <div className="mt-4 space-y-3">
                   {/* Progress Line */}
-                  <div className={`w-full h-1.5 rounded-full ${card.color.progressBg}`}>
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${card.percentage}%` }}
-                      transition={{ duration: 0.8, ease: 'easeOut' }}
-                      className={`h-full rounded-full ${card.color.progressFill}`}
-                    />
+                  <div className="space-y-1.5">
+                    <div className="w-full h-1.5 rounded-full bg-secondary/60">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${card.percentage}%` }}
+                        transition={{ duration: 0.8, ease: 'easeOut' }}
+                        className={`h-full rounded-full ${card.color.progressFill}`}
+                      />
+                    </div>
+                    <span className="text-[10px] font-semibold text-muted-foreground block">{card.completed} of {card.total} tasks completed</span>
                   </div>
                   
                   {/* Redirect link arrow */}
-                  <div className="flex justify-end pt-1">
+                  <div className="flex justify-end">
                     <button
                       onClick={() => navigate(`/tasks?category=${card.name}`)}
-                      className={`w-9 h-9 rounded-full flex items-center justify-center shadow-md transition-transform hover:scale-105 active:scale-95 ${card.color.arrowColor}`}
+                      className="w-9 h-9 rounded-full flex items-center justify-center bg-secondary hover:bg-secondary/80 border border-border/50 text-foreground transition-all duration-200"
                       title="Filter Category Tasks"
                     >
-                      <ArrowUpRight className="w-4 h-4" />
+                      <ArrowUpRight className="w-4.5 h-4.5 text-muted-foreground hover:text-foreground" />
                     </button>
                   </div>
                 </div>
               </motion.div>
             ))
           ) : (
-            <div className="col-span-full py-8 text-center text-xs text-muted-foreground glass border border-dashed border-border rounded-3xl">
+            <div className="col-span-full py-12 text-center text-xs text-muted-foreground glass border border-dashed border-border rounded-3xl">
               No categories found. Create tasks with categories to track goals!
             </div>
           )}
@@ -416,11 +416,11 @@ export const Dashboard: React.FC = () => {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-                  className="bg-card border border-border/60 hover:shadow-lg p-4 rounded-3xl flex justify-between items-center gap-4 transition-shadow relative overflow-hidden group"
+                  className="bg-slate-900/40 backdrop-blur-sm border border-white/5 rounded-3xl hover:border-primary/20 hover:shadow-lg transition-all p-4 duration-300 flex justify-between items-center gap-4 group"
                 >
                   <div className="space-y-1 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
+                      <span className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
                         todo.priority === 'urgent' ? 'bg-red-500/10 text-red-500' :
                         todo.priority === 'high' ? 'bg-amber-500/10 text-amber-500' :
                         todo.priority === 'medium' ? 'bg-blue-500/10 text-blue-500' :
@@ -428,12 +428,12 @@ export const Dashboard: React.FC = () => {
                       }`}>
                         {todo.priority}
                       </span>
-                      <span className="text-[10px] font-bold text-muted-foreground px-2 py-0.5 bg-secondary/50 rounded-full">
+                      <span className="text-[9px] font-bold text-muted-foreground px-2 py-0.5 bg-secondary/50 rounded-full">
                         {todo.category}
                       </span>
                     </div>
 
-                    <h4 className={`text-sm font-bold tracking-tight transition-all duration-300 ${
+                    <h4 className={`text-sm font-extrabold tracking-tight transition-all duration-300 ${
                       todo.status === 'completed' ? 'line-through text-muted-foreground' : 'text-foreground'
                     }`}>
                       {todo.title}
@@ -451,7 +451,7 @@ export const Dashboard: React.FC = () => {
                       <Clock className="w-3.5 h-3.5 text-muted-foreground" />
                       <span>{getTaskTimeRange(todo)}</span>
                       {todo.priority === 'urgent' && (
-                        <span className="px-2 py-0.5 rounded-full bg-red-500/15 text-red-600 font-bold ml-1 animate-pulse">
+                        <span className="px-2 py-0.5 rounded-full bg-red-500/15 text-red-500 font-bold ml-1 animate-pulse">
                           Urgent Meeting
                         </span>
                       )}
